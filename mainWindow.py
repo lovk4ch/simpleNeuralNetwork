@@ -2,9 +2,9 @@ import sys
 
 from PyQt6.QtCore import QSize
 from PyQt6.QtWidgets import QApplication, QMainWindow, QComboBox, QLabel, QVBoxLayout, QHBoxLayout, QWidget
-from simpleNeuralNetwork import MNIST_reader
+from main import MNIST_reader
 
-# Подкласс QMainWindow для настройки главного окна приложения
+# Subclass for the main app window
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -12,8 +12,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Simple Neural Network GUI")
         main_layout = QHBoxLayout()
 
-        reader = MNIST_reader("mnist_dataset/mnist_train_100.csv")
-        pixmap = reader.get_plot_as_pixmap(0)
+        reader = MNIST_reader("mnist_dataset/mnist_train_100.csv", "mnist_dataset/mnist_test_10.csv")
+        reader.train()
+        reader.query()
+        pixmap = reader.get_plot_as_pixmap(2)
 
         # Create a button and connect it to layout
         label = QLabel()
