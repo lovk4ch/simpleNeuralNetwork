@@ -7,7 +7,7 @@ from io import BytesIO
 from PyQt6.QtGui import QImage, QPixmap
 from sympy.polys.polyconfig import query
 
-from fileUtils import FileUtils
+from utils import *
 from simpleNeuralNetwork import NeuralNetwork
 
 input_nodes = 784
@@ -22,6 +22,8 @@ class MNIST_reader:
         self.scorecard = []
         self.n = NeuralNetwork(input_nodes, hidden_nodes, output_nodes, learning_rate)
 
+        plt.grid(True, linestyle=':', alpha=0.5)
+
     def get_dataset_size(self):
         return len(self.data)
         pass
@@ -33,7 +35,7 @@ class MNIST_reader:
     def get_record_info(self, line_index: int = 0):
         return self.scorecard[line_index] if self.data else None
 
-    def get_image(self, line_index: int = 0):
+    def get_image_array(self, line_index: int = 0) -> np.ndarray:
         try:
             if self.data is None:
                 raise IndexError("Data not loaded")
@@ -55,35 +57,37 @@ class MNIST_reader:
         except Exception as e:
             raise ValueError(f"An error occurred while processing the data for image: {e}")
 
-    def get_plot_as_pixmap(self, line_index: int = 0):
-        image_array = self.get_image(line_index)
+    def get_plot_as_pixmap(self, line_index: int = 0) -> QPixmap:
+        image_array = self.get_image_array(line_index)
+
         if image_array is None:
-            print("Data not loaded or image array is None.")
+            print(MSG_EMPTY_IMAGE_ARRAY)
             return QPixmap()
 
-        plt.title(f"Input dataset, #{line_index + 1}", fontname='Brush Script MT',
-            fontsize=30, fontweight="light", color="black", loc="center", pad=15)
-        plt.grid(True, linestyle=':', alpha=0.5)
-        plt.imshow(image_array, cmap='Greys', interpolation='None')
+        if len(image_array.shape) != 2:
+            raise ValueError("Expected 2D grayscale image")
 
-        # Save the plot to a BytesIO object
-        buf = BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.15)
-        buf.seek(0)
+        if image_array.dtype != np.uint8:
+            image_array = (255 * image_array / np.max(image_array)).astype(np.uint8)
 
-        # Create QImage from the BytesIO object
-        qimage = QImage.fromData(buf.getvalue())
+        image_array = 255 - image_array
+        height, width = image_array.shape
 
-        # Convert QImage to QPixmap
+        qimage = QImage(
+            image_array.data, width, height,
+            image_array.strides[0],
+            QImage.Format.Format_Grayscale8
+        )
+
+        qimage = qimage.copy()
         pixmap = QPixmap.fromImage(qimage)
-
         return pixmap
 
     def load_dataset(self, path: str, count: int = 0, start_pos: int = 0):
         self.data = FileUtils.get_data_from_file(path, count, start_pos)
 
         if not self.data:
-            print("No data loaded. Please check the file path and parameters.")
+            print(MSG_DATASET_IS_NOT_LOADED)
             return False
 
         print(f"Dataset loaded with {len(self.data)} records")

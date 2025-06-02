@@ -1,14 +1,12 @@
 import sys
 
 from PyQt6.QtCore import QSize, QDir, Qt
-from PyQt6.QtGui import QFont, QFontDatabase
+from PyQt6.QtGui import QFont, QFontDatabase, QPixmap, QColor, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QHBoxLayout, QWidget, QPushButton, QFileDialog, \
-    QVBoxLayout, QSpinBox, QMessageBox, QSpacerItem, QSizePolicy, QFrame
-from main import MNIST_reader
+    QVBoxLayout, QSlider, QMessageBox, QSpacerItem, QSizePolicy, QFrame
 
-MSG_DATASET_IS_NOT_LOADED = "Failed to load dataset. Check the selected file exists and is not empty."
-MSG_TRAINING_COMPLETED = "The neural network has been trained on {} records.\nNow please select test dataset."
-MSG_QUERY_COMPLETED = "{} records from dataset have been processed.\nAccuracy - {:.2f}%\nNow you can select a record to view its image and processed data."
+from utils import *
+from main import MNIST_reader
 
 
 
@@ -23,13 +21,17 @@ def set_label_style(element: QFrame, font_size: int, height: int = 0, alignment:
 
 # noinspection PyTypeChecker,PyUnresolvedReferences
 class MainToolsLayout(QVBoxLayout):
+
+    # --- Constructor
+    # --- This class represents the main tools layout of the application
+
     def __init__(self, callbacks: dict = None):
         super(MainToolsLayout, self).__init__()
 
         self.button_select_training_dataset = None
         self.spinbox_selection_range = None
 
-        self.setContentsMargins(45, 25, 45, 25)
+        self.setContentsMargins(25, 45, 25, 45)
         self.setSpacing(10)
 
         self.layout_header = QLabel("MNIST Neural Network")
@@ -57,10 +59,13 @@ class MainToolsLayout(QVBoxLayout):
         self.button_select_test_dataset.setEnabled(False)
         self.addWidget(self.button_select_test_dataset)
 
-        self.spinbox_selection_range = QSpinBox()
-        self.spinbox_selection_range.setEnabled(False)
-        self.spinbox_selection_range.valueChanged.connect(lambda value: callbacks["on_update_info"](value))
-        self.addWidget(self.spinbox_selection_range)
+        self.slider_selection_range = QSlider(Qt.Orientation.Horizontal)
+        self.slider_selection_range.setEnabled(False)
+        self.slider_selection_range.setMinimum(1)
+        self.slider_selection_range.setMaximum(1)
+        self.slider_selection_range.setTickInterval(1)
+        self.slider_selection_range.valueChanged.connect(lambda value: callbacks["on_update_info"](value - 1))
+        self.addWidget(self.slider_selection_range)
 
         self.label_record_info = QLabel()
         set_label_style(self.label_record_info, 24, 0, Qt.AlignmentFlag.AlignLeft)
@@ -71,6 +76,11 @@ class MainToolsLayout(QVBoxLayout):
         self.add_line()
 
         pass
+
+    # --- Main GUI methods
+
+    def update_record_info(self, text: str):
+        self.label_record_info.setText(text)
 
     def add_line(self, indent: int = 0):
         line = QFrame()
@@ -86,12 +96,10 @@ class MainToolsLayout(QVBoxLayout):
         pass
 
     def enable_gui_for_statistics(self, dataset_size: int):
-        self.spinbox_selection_range.setRange(1, dataset_size)
-        self.spinbox_selection_range.setEnabled(True)
+        self.slider_selection_range.setRange(1, dataset_size)
+        self.slider_selection_range.setEnabled(True)
+        self.slider_selection_range.valueChanged.emit(self.slider_selection_range.value())
         pass
-
-    def update_record_info(self, text: str):
-        self.label_record_info.setText(text)
 
 
 
@@ -181,14 +189,40 @@ class MainWindow(QMainWindow):
         if label is None:
             return "No record found for the given index."
 
-        return f"Record {index}:\nActual value = {label[1]}\nPredicted value = {label[0]}"
+        return f"Record {index + 1}:\nActual value = {label[1]}\nPredicted value = {label[0]}"
+
+    def draw_grid_for_pixmap(self, pixmap: QPixmap, cell_size: int = 10) -> QPixmap:
+        result = QPixmap(pixmap.size())
+        result.fill(Qt.GlobalColor.white)
+
+        painter = QPainter(result)
+        painter.drawPixmap(0, 0, pixmap)
+
+        pen = QPen(QColor(0, 0, 0, 128))
+        pen.setStyle(Qt.PenStyle.DotLine)
+        pen.setWidth(1)
+        painter.setPen(pen)
+
+        width = pixmap.width()
+        height = pixmap.height()
+
+        for y in range(0, height, cell_size):
+            painter.drawLine(0, y, width, y)
+
+        for x in range(0, width, cell_size):
+            painter.drawLine(x, 0, x, height)
+
+        painter.end()
+        return result
 
     def set_pixmap(self, index: int):
         if self.reader.get_dataset_size() == 0:
             self.show_error_message(MSG_DATASET_IS_NOT_LOADED)
             return
 
-        pixmap = self.reader.get_plot_as_pixmap(index)
+        pixmap = (self.reader.get_plot_as_pixmap(index)
+            .scaled(430, 430, Qt.AspectRatioMode.KeepAspectRatio))
+        pixmap = self.draw_grid_for_pixmap(pixmap, 100)
         self.image_with_digit.setPixmap(pixmap)
         pass
 
