@@ -26,6 +26,13 @@ class MNIST_reader:
         return len(self.data)
         pass
 
+    def get_accuracy(self):
+        return self.accuracy
+        pass
+
+    def get_record_info(self, line_index: int = 0):
+        return self.scorecard[line_index] if self.data else None
+
     def get_image(self, line_index: int = 0):
         try:
             if self.data is None:
@@ -129,5 +136,6 @@ class MNIST_reader:
         scorecard_array = np.asarray(self.scorecard)
         right_answers = sum(1 for i in scorecard_array if i[0] == i[1])
         print(f"Right answers: {right_answers}")
-        print(f"Efficiency = {right_answers / len(scorecard_array) * 100:.2f}%")
+        self.accuracy = right_answers / len(scorecard_array) * 100.0
+        print(f"Efficiency = {self.accuracy:.2f}%")
         pass
