@@ -16,6 +16,7 @@ def set_label_style(element: QFrame, font_size: int, height: int = 0, alignment:
     if height != 0:
         element.setFixedHeight(height)
     element.setStyleSheet("color: #ffffff")
+    pass
 
 
 
@@ -28,10 +29,14 @@ class MainToolsLayout(QVBoxLayout):
     def __init__(self, callbacks: dict = None):
         super(MainToolsLayout, self).__init__()
 
+        self.layout_header = None
+        self.train_dataset_header = None
         self.button_select_training_dataset = None
-        self.spinbox_selection_range = None
+        self.test_dataset_header = None
+        self.button_select_test_dataset = None
+        self.slider_selection_range = None
 
-        self.setContentsMargins(25, 45, 25, 45)
+        self.setContentsMargins(25, 25, 25, 25)
         self.setSpacing(10)
 
         self.layout_header = QLabel("MNIST Neural Network")
@@ -67,20 +72,12 @@ class MainToolsLayout(QVBoxLayout):
         self.slider_selection_range.valueChanged.connect(lambda value: callbacks["on_update_info"](value - 1))
         self.addWidget(self.slider_selection_range)
 
-        self.label_record_info = QLabel()
-        set_label_style(self.label_record_info, 24, 0, Qt.AlignmentFlag.AlignLeft)
-        self.label_record_info.setWordWrap(True)
-        self.addWidget(self.label_record_info)
-
         self.addStretch()
         self.add_line()
 
         pass
 
     # --- Main GUI methods
-
-    def update_record_info(self, text: str):
-        self.label_record_info.setText(text)
 
     def add_line(self, indent: int = 0):
         line = QFrame()
@@ -90,6 +87,7 @@ class MainToolsLayout(QVBoxLayout):
 
         spacer = QSpacerItem(0, indent, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self.addSpacerItem(spacer)
+        pass
 
     def enable_gui_for_test_dataset(self):
         self.button_select_test_dataset.setEnabled(True)
@@ -99,6 +97,68 @@ class MainToolsLayout(QVBoxLayout):
         self.slider_selection_range.setRange(1, dataset_size)
         self.slider_selection_range.setEnabled(True)
         self.slider_selection_range.valueChanged.emit(self.slider_selection_range.value())
+        pass
+
+
+
+class RecordInfoLayout(QVBoxLayout):
+    def __init__(self, callbacks: dict = None):
+        super(RecordInfoLayout, self).__init__()
+
+        self.label_record_info = None
+        self.image_with_digit = None
+
+        self.setContentsMargins(25, 25, 25, 25)
+        self.setSpacing(10)
+
+        self.label_record_info = QLabel()
+        set_label_style(self.label_record_info, 24, 0, Qt.AlignmentFlag.AlignLeft)
+        self.label_record_info.setWordWrap(True)
+        self.addWidget(self.label_record_info)
+
+        self.image_with_digit = QLabel()
+        self.image_with_digit.setFixedSize(QSize(344, 344))
+        self.image_with_digit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.addWidget(self.image_with_digit)
+
+        self.addStretch()
+
+        pass
+
+    # --- Main GUI methods
+
+    def update_record_info(self, text: str):
+        self.label_record_info.setText(text)
+        pass
+
+    def draw_grid_for_pixmap(self, pixmap: QPixmap, cell_size: int = 10) -> QPixmap:
+        result = QPixmap(pixmap.size())
+        result.fill(Qt.GlobalColor.white)
+
+        painter = QPainter(result)
+        painter.drawPixmap(0, 0, pixmap)
+
+        pen = QPen(QColor(0, 0, 0, 128))
+        pen.setStyle(Qt.PenStyle.DotLine)
+        pen.setWidth(1)
+        painter.setPen(pen)
+
+        width = pixmap.width()
+        height = pixmap.height()
+
+        for y in range(0, height, cell_size):
+            painter.drawLine(0, y, width, y)
+
+        for x in range(0, width, cell_size):
+            painter.drawLine(x, 0, x, height)
+
+        painter.end()
+        return result
+
+    def set_pixmap(self, pixmap: QPixmap):
+        pixmap = pixmap.scaled(344, 344, Qt.AspectRatioMode.KeepAspectRatio)
+        pixmap = self.draw_grid_for_pixmap(pixmap, int(344 / 4))
+        self.image_with_digit.setPixmap(pixmap)
         pass
 
 
@@ -122,22 +182,13 @@ class MainWindow(QMainWindow):
         self.main_tools_layout = MainToolsLayout(callbacks)
 
         # === Right layout ===
-        self.graphics_layout = QVBoxLayout()
-        self.image_with_digit = None
+        self.record_info_layout = RecordInfoLayout(callbacks)
 
         # === Main Window Layout ===
         self.main_layout = QHBoxLayout()
 
-
-
-        # Create a button and connect it to layout
-        self.image_with_digit = QLabel()
-        self.image_with_digit.setFixedSize(QSize(500, 500))
-        self.image_with_digit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.graphics_layout.addWidget(self.image_with_digit)
-
         self.main_layout.addLayout(self.main_tools_layout)
-        self.main_layout.addLayout(self.graphics_layout)
+        self.main_layout.addLayout(self.record_info_layout)
 
         container = QWidget()
         container.setLayout(self.main_layout)
@@ -182,7 +233,7 @@ class MainWindow(QMainWindow):
     def update_view(self, index: int):
         self.set_pixmap(index)
         info_text = self.get_current_record_info(index)
-        self.main_tools_layout.update_record_info(info_text)
+        self.record_info_layout.update_record_info(info_text)
 
     def get_current_record_info(self, index: int) -> str:
         label = self.reader.get_record_info(index)
@@ -191,39 +242,17 @@ class MainWindow(QMainWindow):
 
         return f"Record {index + 1}:\nActual value = {label[1]}\nPredicted value = {label[0]}"
 
-    def draw_grid_for_pixmap(self, pixmap: QPixmap, cell_size: int = 10) -> QPixmap:
-        result = QPixmap(pixmap.size())
-        result.fill(Qt.GlobalColor.white)
-
-        painter = QPainter(result)
-        painter.drawPixmap(0, 0, pixmap)
-
-        pen = QPen(QColor(0, 0, 0, 128))
-        pen.setStyle(Qt.PenStyle.DotLine)
-        pen.setWidth(1)
-        painter.setPen(pen)
-
-        width = pixmap.width()
-        height = pixmap.height()
-
-        for y in range(0, height, cell_size):
-            painter.drawLine(0, y, width, y)
-
-        for x in range(0, width, cell_size):
-            painter.drawLine(x, 0, x, height)
-
-        painter.end()
-        return result
-
     def set_pixmap(self, index: int):
         if self.reader.get_dataset_size() == 0:
             self.show_error_message(MSG_DATASET_IS_NOT_LOADED)
             return
 
-        pixmap = (self.reader.get_plot_as_pixmap(index)
-            .scaled(430, 430, Qt.AspectRatioMode.KeepAspectRatio))
-        pixmap = self.draw_grid_for_pixmap(pixmap, 100)
-        self.image_with_digit.setPixmap(pixmap)
+        pixmap = self.reader.get_plot_as_pixmap(index)
+        if pixmap.isNull():
+            self.show_error_message(MSG_EMPTY_IMAGE_ARRAY)
+            return
+
+        self.record_info_layout.set_pixmap(pixmap)
         pass
 
     def open_file_dialog(self, callback):

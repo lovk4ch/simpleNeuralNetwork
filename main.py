@@ -3,7 +3,6 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from io import BytesIO
 from PyQt6.QtGui import QImage, QPixmap
 from sympy.polys.polyconfig import query
 
@@ -17,7 +16,8 @@ learning_rate = 0.2
 
 class MNIST_reader:
     def __init__(self):
-        self.accuracy = 0.0
+        self.total_answers = 0
+        self.right_answers = 0
         self.data = []
         self.scorecard = []
         self.n = NeuralNetwork(input_nodes, hidden_nodes, output_nodes, learning_rate)
@@ -29,7 +29,10 @@ class MNIST_reader:
         pass
 
     def get_accuracy(self):
-        return self.accuracy
+        if self.right_answers == 0:
+            return 0.0
+
+        return self.right_answers / self.total_answers * 100
         pass
 
     def get_record_info(self, line_index: int = 0):
@@ -117,6 +120,7 @@ class MNIST_reader:
         print("Query started")
         init_time = time.perf_counter()
 
+        self.scorecard.clear()
         for record in self.data:
             query(record)
             all_values = record.split(",")
@@ -140,6 +144,8 @@ class MNIST_reader:
         scorecard_array = np.asarray(self.scorecard)
         right_answers = sum(1 for i in scorecard_array if i[0] == i[1])
         print(f"Right answers: {right_answers}")
-        self.accuracy = right_answers / len(scorecard_array) * 100.0
-        print(f"Efficiency = {self.accuracy:.2f}%")
+
+        self.total_answers += len(scorecard_array)
+        self.right_answers += right_answers
+        print(f"Efficiency = {self.get_accuracy():.2f}%")
         pass
