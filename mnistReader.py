@@ -14,8 +14,10 @@ hidden_nodes = 100
 output_nodes = 10
 learning_rate = 0.2
 
-class MNIST_reader:
+
+class MnistReader:
     def __init__(self):
+        self.total_trained = 0
         self.total_answers = 0
         self.right_answers = 0
         self.data = []
@@ -34,6 +36,12 @@ class MNIST_reader:
 
         return self.right_answers / self.total_answers * 100
         pass
+
+    def get_total_trained(self):
+        return self.total_trained
+
+    def get_total_answers(self):
+        return self.total_answers
 
     def get_record_info(self, line_index: int = 0):
         return self.scorecard[line_index] if self.data else None
@@ -104,16 +112,17 @@ class MNIST_reader:
             for record in self.data:
                 all_values = record.split(",")
                 inputs = (np.asfarray(all_values[1:]) / 255.0 * 0.99) + 0.01
-                
+
                 # output with 10 digits
                 targets = np.zeros(output_nodes) + 0.01
-                
+
                 # set marker for the correct digit
                 targets[int(all_values[0])] = 0.99
-                
+
                 self.n.train(inputs, targets)
             pass
 
+        self.total_trained += len(self.data) * epochs
         print(f"Time for train: {time.perf_counter() - init_time:.2f} sec")
 
     def query(self):
