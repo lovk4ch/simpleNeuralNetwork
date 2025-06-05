@@ -3,39 +3,52 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
+from enum import Enum
 from PyQt6.QtGui import QImage, QPixmap
 from sympy.polys.polyconfig import query
 
 from utils import *
 from simpleNeuralNetwork import NeuralNetwork
 
+
+
+class NetMode(Enum):
+    TRAIN = 0
+    QUERY = 1
+
 input_nodes = 784
 hidden_nodes = 100
 output_nodes = 10
 learning_rate = 0.2
-
 
 class MnistReader:
     def __init__(self):
         self.total_trained = 0
         self.total_answers = 0
         self.right_answers = 0
-        self.data = []
+        self.train_data = []
+        self.query_data = []
         self.scorecard = []
         self.n = NeuralNetwork(input_nodes, hidden_nodes, output_nodes, learning_rate)
 
         plt.grid(True, linestyle=':', alpha=0.5)
-
-    def get_dataset_size(self):
-        return len(self.data)
         pass
+
+    def get_dataset_size(self, net_mode: NetMode = NetMode.TRAIN):
+        match net_mode.value:
+            case NetMode.TRAIN.value:
+                return len(self.train_data)
+            case NetMode.QUERY.value:
+                return len(self.query_data)
+            case _:
+                print(MSG_UNKNOWN_NET_MODE)
+                return 0
 
     def get_accuracy(self):
         if self.right_answers == 0:
             return 0.0
 
         return self.right_answers / self.total_answers * 100
-        pass
 
     def get_total_trained(self):
         return self.total_trained
@@ -44,18 +57,18 @@ class MnistReader:
         return self.total_answers
 
     def get_record_info(self, line_index: int = 0):
-        return self.scorecard[line_index] if self.data else None
+        return self.scorecard[line_index] if self.query_data else None
 
     def get_image_array(self, line_index: int = 0) -> np.ndarray:
         try:
-            if self.data is None:
+            if self.query_data is None:
                 raise IndexError("Data not loaded")
 
-            if len(self.data) <= line_index:
+            if len(self.query_data) <= line_index:
                 raise ValueError("Line does not exist or index out of range")
 
             # remove extra spaces and newlines
-            line = self.data[line_index].strip()
+            line = self.query_data[line_index].strip()
 
             # skip the first value (label)
             parts = line.split(",")[1:]
@@ -94,22 +107,14 @@ class MnistReader:
         pixmap = QPixmap.fromImage(qimage)
         return pixmap
 
-    def load_dataset(self, path: str, count: int = 0, start_pos: int = 0):
-        self.data = FileUtils.get_data_from_file(path, count, start_pos)
-
-        if not self.data:
-            print(MSG_DATASET_IS_NOT_LOADED)
-            return False
-
-        print(f"Dataset loaded with {len(self.data)} records")
-        return True
-
-    def train(self, epochs: int = 1):
+    def train(self, epochs: int = 1, callback = None):
         print("Train started with epochs:", epochs)
         init_time = time.perf_counter()
+        step_time = init_time
+        count = 0
 
         for e in range(epochs):
-            for record in self.data:
+            for record in self.train_data:
                 all_values = record.split(",")
                 inputs = (np.asfarray(all_values[1:]) / 255.0 * 0.99) + 0.01
 
@@ -120,17 +125,26 @@ class MnistReader:
                 targets[int(all_values[0])] = 0.99
 
                 self.n.train(inputs, targets)
+
+                count += 1
+                if (time.perf_counter() - step_time) > 0.03:
+                    callback(count) if callback else None
+                    step_time = time.perf_counter()
             pass
 
-        self.total_trained += len(self.data) * epochs
+        self.total_trained += len(self.train_data) * epochs
+        callback(count) if callback else None
         print(f"Time for train: {time.perf_counter() - init_time:.2f} sec")
+        print(f"Total training data: {self.get_total_trained()}, last dataset: {self.get_dataset_size()}.\n")
 
-    def query(self):
+        # self.train_data.clear()
+
+    def query(self, callback = None):
         print("Query started")
         init_time = time.perf_counter()
 
         self.scorecard.clear()
-        for record in self.data:
+        for record in self.query_data:
             query(record)
             all_values = record.split(",")
 
@@ -158,3 +172,22 @@ class MnistReader:
         self.right_answers += right_answers
         print(f"Efficiency = {self.get_accuracy():.2f}%")
         pass
+
+    def load_dataset(self, path: str, count: int = 0, start_pos: int = 0, net_mode: NetMode = NetMode.TRAIN):
+        data = FileUtils.get_data_from_file(path, count, start_pos)
+
+        if not data:
+            print(MSG_DATASET_IS_NOT_LOADED)
+            return False
+
+        match net_mode.value:
+            case NetMode.TRAIN.value:
+                self.train_data = data
+            case NetMode.QUERY.value:
+                self.query_data = data
+            case _:
+                print(MSG_UNKNOWN_NET_MODE)
+                return False
+
+        print(f"Dataset loaded with {len(data)} records")
+        return True

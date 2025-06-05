@@ -3,6 +3,7 @@ from itertools import islice
 MSG_EMPTY_IMAGE_ARRAY = "Image array is empty or not loaded."
 MSG_DATASET_IS_NOT_LOADED = "Failed to load dataset. Check the selected file exists and is not empty."
 MSG_TRAINING_COMPLETED = "The neural network has been trained on {} records.\nNow please select test dataset."
+MSG_UNKNOWN_NET_MODE = "Unknown net mode. Please select TRAIN or QUERY mode."
 MSG_QUERY_COMPLETED = "{} records from dataset have been processed.\nAccuracy - {:.2f}%\nNow you can select a record to view its image and processed data."
 
 class FileUtils:

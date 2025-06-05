@@ -1,18 +1,21 @@
 import sys
+import random
+from concurrent.futures import ThreadPoolExecutor
 
 from PyQt5.QtWidgets import QLayout
-from PyQt6.QtCore import QSize, QDir, Qt
+from PyQt6.QtCore import QSize, QDir, Qt, QTimer, QMetaObject, pyqtSlot, pyqtSignal
 from PyQt6.QtGui import QFont, QFontDatabase, QPixmap, QColor, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QHBoxLayout, QWidget, QPushButton, QFileDialog, \
     QVBoxLayout, QSlider, QSpinBox, QMessageBox, QSpacerItem, QSizePolicy, QFrame
 
+from src.mnistReader import NetMode
 from utils import *
 from mnistReader import MnistReader
 
 
 
 def set_label_style(element: QFrame, font_size: int, height: int = 0, alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignCenter):
-    element.setFont(QFont("TT Supermolot Neue Trl Exp", font_size, QFont.Weight.Bold))
+    element.setFont(QFont("TT Supermolot Neue Trl Db", font_size, QFont.Weight.Bold))
     element.setAlignment(alignment)
     if height != 0:
         element.setFixedHeight(height)
@@ -28,6 +31,31 @@ def set_layout_visible(layout: QLayout, visible: bool):
 
 
 
+class QGlitchLabel(QLabel):
+    def __init__(self, text):
+        super().__init__()
+        self.full_text = text
+        self.setTextFormat(Qt.TextFormat.RichText)
+        self.timers = [QTimer() for _ in range(5)]
+        for timer in self.timers:
+            timer.timeout.connect(self.glitch)
+            timer.start(random.randint(1500, 2500))
+        self.restore_text()
+
+    def glitch(self):
+        chars = list(self.full_text)
+        indices_for_random = [0, 1, 2, 6, 7, 8, 11, 13, 14, 15, 16, 17, 18, 19]
+        indices_for_glitch = random.sample(indices_for_random, 1)
+        for i in indices_for_glitch:
+            chars[i] = f'<span style="color: rgb(155, 155, 155)">{chars[i]}</span>'
+        self.setText("".join(chars))
+        QTimer.singleShot(250, self.restore_text)
+
+    def restore_text(self):
+        self.setText(self.full_text)
+
+
+
 # noinspection PyTypeChecker,PyUnresolvedReferences
 class MainToolsLayout(QVBoxLayout):
 
@@ -37,11 +65,11 @@ class MainToolsLayout(QVBoxLayout):
     def __init__(self, callbacks: dict = None):
         super(MainToolsLayout, self).__init__()
 
-        self.setContentsMargins(25, 25, 25, 25)
+        self.setContentsMargins(25, 15, 25, 25)
         self.setSpacing(10)
 
-        self.layout_header = QLabel("MNIST Neural Network")
-        set_label_style(self.layout_header, 30, 45, Qt.AlignmentFlag.AlignCenter)
+        self.layout_header = QGlitchLabel("MNIST Neural Network")
+        set_label_style(self.layout_header, 36, 54, Qt.AlignmentFlag.AlignCenter)
         self.addWidget(self.layout_header)
 
         self.add_line(25)
@@ -153,6 +181,11 @@ class MainToolsLayout(QVBoxLayout):
     def get_max_records_for_test(self):
         return self.spinbox_max_records_test.value()
 
+    def set_buttons_enabled(self, enabled: bool):
+        self.button_select_training_dataset.setEnabled(enabled)
+        self.button_select_test_dataset.setEnabled(enabled)
+        pass
+
     def update_training_info(self, text: str):
         self.label_training_info.setText(text)
         pass
@@ -162,13 +195,13 @@ class MainToolsLayout(QVBoxLayout):
         self.label_accuracy.setText(accuracy)
         pass
 
-    def enable_gui_for_test_dataset(self):
+    def show_gui_for_test_dataset(self):
         if not self.test_dataset_header.isVisible():
             self.test_dataset_header.setVisible(True)
             set_layout_visible(self.layout_test_params, True)
         pass
 
-    def enable_gui_for_statistics(self, dataset_size: int):
+    def show_gui_for_statistics(self, dataset_size: int):
         self.slider_selection_range.setRange(1, dataset_size)
         self.slider_selection_range.setVisible(True)
         self.slider_selection_range.valueChanged.emit(self.slider_selection_range.value())
@@ -183,8 +216,8 @@ class RecordInfoLayout(QVBoxLayout):
         self.label_record_info = None
         self.image_with_digit = None
 
-        self.setContentsMargins(25, 25, 25, 25)
-        self.setSpacing(10)
+        self.setContentsMargins(25, 19, 25, 25)
+        self.setSpacing(18)
 
         self.label_record_info = QLabel()
         set_label_style(self.label_record_info, 24, 0, Qt.AlignmentFlag.AlignLeft)
@@ -192,7 +225,7 @@ class RecordInfoLayout(QVBoxLayout):
         self.addWidget(self.label_record_info)
 
         self.image_with_digit = QLabel()
-        self.image_with_digit.setFixedSize(QSize(344, 344))
+        self.image_with_digit.setFixedSize(QSize(345, 345))
         self.image_with_digit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.addWidget(self.image_with_digit)
 
@@ -231,27 +264,32 @@ class RecordInfoLayout(QVBoxLayout):
         return result
 
     def set_pixmap(self, pixmap: QPixmap):
-        pixmap = pixmap.scaled(344, 344, Qt.AspectRatioMode.KeepAspectRatio)
-        pixmap = self.draw_grid_for_pixmap(pixmap, int(344 / 4))
+        pixmap = pixmap.scaled(345, 345, Qt.AspectRatioMode.KeepAspectRatio)
+        pixmap = self.draw_grid_for_pixmap(pixmap, int(345 / 4))
         self.image_with_digit.setPixmap(pixmap)
         pass
 
 
 
 # Subclass for the main app window
+# noinspection PyUnresolvedReferences
 class MainWindow(QMainWindow):
+    on_update_progress = pyqtSignal(int)
+
     def __init__(self):
         super(MainWindow, self).__init__()
 
         callbacks = {
-            "on_select_training_dataset": lambda: self.open_file_dialog(self.train),
-            "on_select_test_dataset": lambda: self.open_file_dialog(self.query),
+            "on_select_training_dataset": lambda: self.open_file_dialog(self.start_train),
+            "on_select_test_dataset": lambda: self.open_file_dialog(self.start_query),
             "on_record_update": self.update_record_info,
+            "on_progress_update": lambda value: self.update_training_info(value)
         }
 
         self.setWindowTitle("Simple Neural Network for MNIST")
         self.last_dir = QDir.currentPath() + "/mnist_dataset"
         self.reader = MnistReader()
+        self.on_update_progress.connect(callbacks["on_progress_update"])
 
         # === Left layout ===
         self.main_tools_layout = MainToolsLayout(callbacks)
@@ -279,37 +317,11 @@ class MainWindow(QMainWindow):
             }
         """)
 
-    def load_dataset(self, path: str, count: int = 0, start_pos: int = 0):
-        if self.reader.load_dataset(path, count, start_pos) is False:
-            self.show_error_message(MSG_DATASET_IS_NOT_LOADED)
-            return False
-        return True
+    # --- Main GUI methods
 
-    def train(self, path):
-        records = self.main_tools_layout.get_max_records_for_training()
-        if not self.load_dataset(path, records, 1):
-            return
-
-        self.reader.train(1)
-        self.show_info_message(MSG_TRAINING_COMPLETED.format(self.reader.get_dataset_size()))
-        self.main_tools_layout.enable_gui_for_test_dataset()
-        self.update_training_info()
-        pass
-
-    def query(self, path):
-        records = self.main_tools_layout.get_max_records_for_test()
-        if not self.load_dataset(path, records, 1):
-            return
-
-        self.reader.query()
-        self.show_info_message(MSG_QUERY_COMPLETED.format(self.reader.get_dataset_size(), self.reader.get_accuracy()))
-        self.main_tools_layout.enable_gui_for_statistics(self.reader.get_dataset_size())
-        self.update_test_info()
-        pass
-
-    def update_training_info(self):
+    def update_training_info(self, count: int):
         self.main_tools_layout.update_training_info(
-            f"Total training data: {self.reader.get_total_trained()}, last dataset: {self.reader.get_dataset_size()}.\n"
+            f"Processed {count} / {self.reader.get_dataset_size()}\n"
         )
         pass
 
@@ -325,15 +337,6 @@ class MainWindow(QMainWindow):
         info_text = self.get_current_record_info(index)
         self.record_info_layout.update_record_info(info_text)
         pass
-
-    def get_current_record_info(self, index: int) -> str:
-        label = self.reader.get_record_info(index)
-        if label is None:
-            return "No record found for the given index."
-
-        return (f"Record {index + 1}:\n"
-                f"Actual value = {label[1]}\n"
-                f"Network answer = {label[0]}")
 
     def set_pixmap(self, index: int):
         if self.reader.get_dataset_size() == 0:
@@ -381,8 +384,91 @@ class MainWindow(QMainWindow):
         msg.exec()
         pass
 
+    # --- Business logic methods
+
+    def load_dataset(self, path: str, count: int = 0, start_pos: int = 0, net_mode: NetMode = NetMode.TRAIN):
+        if self.reader.load_dataset(path, count, start_pos, net_mode) is False:
+            self.show_error_message(MSG_DATASET_IS_NOT_LOADED)
+            return False
+        return True
+
+    def train(self, path, on_progress_callback):
+        records = self.main_tools_layout.get_max_records_for_training()
+        if not self.load_dataset(path, records, 1, NetMode.TRAIN):
+            return
+
+        self.reader.train(1, on_progress_callback)
+        pass
+
+    def start_train(self, path: str):
+        def on_progress_callback(value):
+            self.on_update_progress.emit(value)
+
+        future = executor.submit(self.train, path, on_progress_callback)
+        future.add_done_callback(
+            lambda _: QMetaObject.invokeMethod(
+                self,
+                self.on_finish_train.__name__,
+                Qt.ConnectionType.QueuedConnection
+            )
+        )
+        self.main_tools_layout.set_buttons_enabled(False)
+        pass
+
+    @pyqtSlot()
+    def on_finish_train(self):
+        self.show_info_message(MSG_TRAINING_COMPLETED.format(self.reader.get_dataset_size()))
+        self.main_tools_layout.show_gui_for_test_dataset()
+        self.main_tools_layout.set_buttons_enabled(True)
+        pass
+
+    def query(self, path, on_progress_callback):
+        records = self.main_tools_layout.get_max_records_for_test()
+        if not self.load_dataset(path, records, 1, NetMode.QUERY):
+            return
+
+        self.reader.query()
+        pass
+
+    def start_query(self, path: str):
+        def on_progress_callback(value):
+            self.on_update_progress.emit(value)
+
+        future = executor.submit(self.query, path, on_progress_callback)
+        future.add_done_callback(
+            lambda _: QMetaObject.invokeMethod(
+                self,
+                self.on_finish_query.__name__,
+                Qt.ConnectionType.QueuedConnection
+            )
+        )
+        self.main_tools_layout.set_buttons_enabled(False)
+        pass
+
+    @pyqtSlot()
+    def on_finish_query(self):
+        self.show_info_message(MSG_QUERY_COMPLETED.format(self.reader.get_dataset_size(NetMode.QUERY), self.reader.get_accuracy()))
+        self.main_tools_layout.show_gui_for_statistics(self.reader.get_dataset_size(NetMode.QUERY))
+        self.update_test_info()
+        self.main_tools_layout.set_buttons_enabled(True)
+        pass
+
+    def get_current_record_info(self, index: int) -> str:
+        label = self.reader.get_record_info(index)
+        if label is None:
+            return "No record found for the given index."
+
+        return (f"Record {index + 1}:\n"
+                f"Actual value = {label[1]}\n"
+                f"Network answer = {label[0]}")
+        pass
+
+
+
+executor = ThreadPoolExecutor(max_workers=2)
+
 app = QApplication(sys.argv)
-QFontDatabase.addApplicationFont("resources/fonts/TT Supermolot Neue Trial Expanded Regular.ttf")
+QFontDatabase.addApplicationFont("resources/fonts/TT Supermolot Neue Trial DemiBold.ttf")
 
 window = MainWindow()
 window.show()
