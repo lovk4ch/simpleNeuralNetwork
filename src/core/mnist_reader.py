@@ -7,8 +7,8 @@ from enum import Enum
 from PyQt6.QtGui import QImage, QPixmap
 from sympy.polys.polyconfig import query
 
-from utils import *
-from simpleNeuralNetwork import NeuralNetwork
+from src.utils.utils import *
+from src.core.simple_neural_network import NeuralNetwork
 
 
 
@@ -174,7 +174,7 @@ class MnistReader:
         pass
 
     def load_dataset(self, path: str, count: int = 0, start_pos: int = 0, net_mode: NetMode = NetMode.TRAIN):
-        data = FileUtils.get_data_from_file(path, count, start_pos)
+        data = get_data_from_file(path, count, start_pos)
 
         if not data:
             print(MSG_DATASET_IS_NOT_LOADED)
