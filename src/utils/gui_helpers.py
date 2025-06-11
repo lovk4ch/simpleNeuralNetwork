@@ -10,7 +10,7 @@ SIZE_FONT_H2 = 24
 SIZE_FONT_H3 = 18
 SIZE_FONT_PROGRESS = 10
 SIZE_FONT_ACCURACY = 54
-IMAGE_WITH_DIGIT_SIZE = 320
+IMAGE_WITH_DIGIT_SIZE = 336
 
 
 def set_progress_bar_style(element: QProgressBar, font_size: int, height: int = 0, alignment: Qt.AlignmentFlag = Qt.AlignmentFlag.AlignCenter):

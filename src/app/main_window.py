@@ -54,6 +54,7 @@ class MainWindow(QMainWindow):
         # === Main window container ===
 
         self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addLayout(self.full_space_layout)
         self.main_layout.addWidget(self.progressBar)
 

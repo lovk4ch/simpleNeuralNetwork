@@ -39,7 +39,7 @@ class RecordInfoLayout(QVBoxLayout):
         self.image_with_digit = None
 
         self.setContentsMargins(25, 19, 25, 25)
-        self.setSpacing(20)
+        self.setSpacing(22)
 
         self.label_record_info = QLabel()
         set_widget_style(self.label_record_info, SIZE_FONT_H2, 0, Qt.AlignmentFlag.AlignLeft)

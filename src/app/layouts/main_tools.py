@@ -34,7 +34,7 @@ class MainToolsLayout(QVBoxLayout):
         self.layout_training_params.addWidget(self.label_max_records_training)
 
         self.spinbox_max_records_training = QSpinBox()
-        self.spinbox_max_records_training.setRange(0, 10000)
+        self.spinbox_max_records_training.setRange(0, 1000000)
         self.layout_training_params.addWidget(self.spinbox_max_records_training)
 
         self.button_select_training_dataset = QPushButton("Select")
@@ -60,7 +60,7 @@ class MainToolsLayout(QVBoxLayout):
         self.layout_test_params.addWidget(self.label_max_records_test)
 
         self.spinbox_max_records_test = QSpinBox()
-        self.spinbox_max_records_test.setRange(0, 10000)
+        self.spinbox_max_records_test.setRange(0, 1000000)
         self.layout_test_params.addWidget(self.spinbox_max_records_test)
 
         self.button_select_test_dataset = QPushButton("Select")
