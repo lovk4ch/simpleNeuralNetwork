@@ -6,6 +6,12 @@
 
 ---
 
+## 🛠 Stack:
+
+Python, PyQt6, NumPy, multithreading (ThreadPoolExecutor), MVC, custom neural network engine.
+
+---
+
 ## 🧩 Features
 
 - Visual interface on PyQt6
@@ -28,3 +34,15 @@ pip install -r requirements.txt
 
 # 3. Run the app
 python -m src.main
+```
+
+---
+
+## 🚄 Further update plan:
+
+- Number of epochs for training in GUI
+- Graphs of the dependence of the training efficiency on the number
+- Setting the number of layers, number of neurons, activation type (ReLU, tanh, sigmoid)
+- Possibility to draw your own numbers
+- Loss/accuracy graph by epochs
+- Possibility to save and load the trained model
