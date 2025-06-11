@@ -1,8 +1,7 @@
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QSpinBox, QPushButton, QSpacerItem, QSizePolicy, QSlider
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QSpinBox, QPushButton, QSpacerItem, QSizePolicy, QSlider, QFrame
 
 from src.app.widgets.glitch_label import *
 from src.utils.gui_helpers import *
-from src.utils.utils import *
 
 
 class MainToolsLayout(QVBoxLayout):
@@ -17,7 +16,7 @@ class MainToolsLayout(QVBoxLayout):
         self.setSpacing(10)
 
         self.layout_header = QGlitchLabel("MNIST Neural Network")
-        set_label_style(self.layout_header, SIZE_FONT_HEADER, int(SIZE_FONT_HEADER * 1.5), Qt.AlignmentFlag.AlignCenter)
+        set_widget_style(self.layout_header, SIZE_FONT_HEADER, int(SIZE_FONT_HEADER * 1.5), Qt.AlignmentFlag.AlignCenter)
         self.addWidget(self.layout_header)
 
         self.add_line(25)
@@ -25,13 +24,13 @@ class MainToolsLayout(QVBoxLayout):
         # --- Training dataset section
 
         self.train_dataset_header = QLabel("Train dataset")
-        set_label_style(self.train_dataset_header, SIZE_FONT_H2, int(SIZE_FONT_H2 * 1.5), Qt.AlignmentFlag.AlignLeft)
+        set_widget_style(self.train_dataset_header, SIZE_FONT_H2, int(SIZE_FONT_H2 * 1.5), Qt.AlignmentFlag.AlignLeft)
         self.addWidget(self.train_dataset_header)
 
         self.layout_training_params = QHBoxLayout()
 
         self.label_max_records_training = QLabel("Max. records:")
-        set_label_style(self.label_max_records_training, SIZE_FONT_H3, int(SIZE_FONT_H3 * 1.5), Qt.AlignmentFlag.AlignLeft)
+        set_widget_style(self.label_max_records_training, SIZE_FONT_H3, int(SIZE_FONT_H3 * 1.5), Qt.AlignmentFlag.AlignLeft)
         self.layout_training_params.addWidget(self.label_max_records_training)
 
         self.spinbox_max_records_training = QSpinBox()
@@ -45,25 +44,25 @@ class MainToolsLayout(QVBoxLayout):
 
         self.addLayout(self.layout_training_params)
 
-        self.label_training_info = QLabel()
-        set_label_style(self.label_training_info, SIZE_FONT_INFO, int(SIZE_FONT_INFO * 1.5), Qt.AlignmentFlag.AlignLeft)
-        self.label_training_info.setWordWrap(True)
-        self.addWidget(self.label_training_info)
+        self.progressBar_training = QProgressBar()
+        self.progressBar_training.setRange(0, 100)
+        self.progressBar_training.setFormat("Training: %p%")
+        set_progress_bar_style(self.progressBar_training, SIZE_FONT_PROGRESS, int(SIZE_FONT_PROGRESS * 1.75), Qt.AlignmentFlag.AlignCenter)
+        self.addWidget(self.progressBar_training)
 
         self.addSpacing(20)
-        pass
 
         # --- Test dataset section
 
         self.test_dataset_header = QLabel("Test dataset")
-        set_label_style(self.test_dataset_header, SIZE_FONT_H2, int(SIZE_FONT_H2 * 1.5), Qt.AlignmentFlag.AlignLeft)
+        set_widget_style(self.test_dataset_header, SIZE_FONT_H2, int(SIZE_FONT_H2 * 1.5), Qt.AlignmentFlag.AlignLeft)
         self.test_dataset_header.setVisible(False)
         self.addWidget(self.test_dataset_header)
 
         self.layout_test_params = QHBoxLayout()
 
         self.label_max_records_test = QLabel("Max. records:")
-        set_label_style(self.label_max_records_test, SIZE_FONT_H3, int(SIZE_FONT_H3 * 1.5), Qt.AlignmentFlag.AlignLeft)
+        set_widget_style(self.label_max_records_test, SIZE_FONT_H3, int(SIZE_FONT_H3 * 1.5), Qt.AlignmentFlag.AlignLeft)
         self.layout_test_params.addWidget(self.label_max_records_test)
 
         self.spinbox_max_records_test = QSpinBox()
@@ -77,7 +76,6 @@ class MainToolsLayout(QVBoxLayout):
 
         set_layout_visible(self.layout_test_params, False)
         self.addLayout(self.layout_test_params)
-        pass
 
         # --- Efficiency section
 
@@ -91,17 +89,16 @@ class MainToolsLayout(QVBoxLayout):
         self.addWidget(self.slider_selection_range)
 
         self.label_test_info = QLabel()
-        set_label_style(self.label_test_info, SIZE_FONT_INFO, int(SIZE_FONT_INFO * 1.5), Qt.AlignmentFlag.AlignCenter)
+        set_widget_style(self.label_test_info, SIZE_FONT_H3, int(SIZE_FONT_H3 * 1.5), Qt.AlignmentFlag.AlignCenter)
         self.label_test_info.setWordWrap(True)
         self.addWidget(self.label_test_info)
 
         self.label_accuracy = QLabel()
-        set_label_style(self.label_accuracy, SIZE_FONT_ACCURACY, 0, Qt.AlignmentFlag.AlignCenter)
+        set_widget_style(self.label_accuracy, SIZE_FONT_ACCURACY, 0, Qt.AlignmentFlag.AlignCenter)
         self.addWidget(self.label_accuracy)
 
         self.addStretch()
         self.add_line()
-        pass
 
     # --- Main GUI methods
 
@@ -126,8 +123,8 @@ class MainToolsLayout(QVBoxLayout):
         self.button_select_test_dataset.setEnabled(enabled)
         pass
 
-    def update_training_info(self, text: str):
-        self.label_training_info.setText(text)
+    def update_training_info(self, progress: float):
+        self.progressBar_training.setValue(int(progress * 100))
         pass
 
     def update_test_info(self, text: str, accuracy: str):

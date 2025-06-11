@@ -42,7 +42,7 @@ class RecordInfoLayout(QVBoxLayout):
         self.setSpacing(18)
 
         self.label_record_info = QLabel()
-        set_label_style(self.label_record_info, SIZE_FONT_H2, 0, Qt.AlignmentFlag.AlignLeft)
+        set_widget_style(self.label_record_info, SIZE_FONT_H2, 0, Qt.AlignmentFlag.AlignLeft)
         self.label_record_info.setWordWrap(True)
         self.addWidget(self.label_record_info)
 

@@ -1,9 +1,9 @@
-from PyQt6.QtCore import QSize, QDir, Qt, QMetaObject, QTimer, pyqtSlot, pyqtSignal
-from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QFileDialog, \
+from PyQt6.QtCore import QSize, QDir, QTimer, pyqtSignal
+from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QFileDialog, \
     QMessageBox
 
 from concurrent.futures import ThreadPoolExecutor
-from src.utils.utils import *
+from src.utils.gui_helpers import *
 from src.core.mnist_reader import NetMode, MnistReader
 from src.app.layouts.main_tools import MainToolsLayout
 from src.app.layouts.record_info import RecordInfoLayout
@@ -60,7 +60,7 @@ class MainWindow(QMainWindow):
 
     def update_training_info(self, count: int):
         self.main_tools_layout.update_training_info(
-            f"Processed {count} / {self.reader.get_dataset_size()}\n"
+            count / self.reader.get_dataset_size()
         )
         pass
 
@@ -152,7 +152,6 @@ class MainWindow(QMainWindow):
         self.main_tools_layout.set_buttons_enabled(False)
         pass
 
-    @pyqtSlot()
     def on_finish_train(self):
         self.show_info_message(MSG_TRAINING_COMPLETED.format(self.reader.get_dataset_size()))
         self.main_tools_layout.show_gui_for_test_dataset()
@@ -180,7 +179,6 @@ class MainWindow(QMainWindow):
         self.main_tools_layout.set_buttons_enabled(False)
         pass
 
-    @pyqtSlot()
     def on_finish_query(self):
         self.show_info_message(MSG_QUERY_COMPLETED.format(self.reader.get_dataset_size(NetMode.QUERY), self.reader.get_accuracy()))
         self.main_tools_layout.show_gui_for_statistics(self.reader.get_dataset_size(NetMode.QUERY))
