@@ -44,12 +44,6 @@ class MainToolsLayout(QVBoxLayout):
 
         self.addLayout(self.layout_training_params)
 
-        self.progressBar_training = QProgressBar()
-        self.progressBar_training.setRange(0, 100)
-        self.progressBar_training.setFormat("Training: %p%")
-        set_progress_bar_style(self.progressBar_training, SIZE_FONT_PROGRESS, int(SIZE_FONT_PROGRESS * 1.75), Qt.AlignmentFlag.AlignCenter)
-        self.addWidget(self.progressBar_training)
-
         self.addSpacing(20)
 
         # --- Test dataset section
@@ -121,10 +115,6 @@ class MainToolsLayout(QVBoxLayout):
     def set_buttons_enabled(self, enabled: bool):
         self.button_select_training_dataset.setEnabled(enabled)
         self.button_select_test_dataset.setEnabled(enabled)
-        pass
-
-    def update_training_info(self, progress: float):
-        self.progressBar_training.setValue(int(progress * 100))
         pass
 
     def update_test_info(self, text: str, accuracy: str):

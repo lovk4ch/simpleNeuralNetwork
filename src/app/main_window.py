@@ -1,8 +1,9 @@
 from PyQt6.QtCore import QSize, QDir, QTimer, pyqtSignal
-from PyQt6.QtWidgets import QMainWindow, QHBoxLayout, QFileDialog, \
+from PyQt6.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QFileDialog, \
     QMessageBox
 
 from concurrent.futures import ThreadPoolExecutor
+from src.utils.utils import *
 from src.utils.gui_helpers import *
 from src.core.mnist_reader import NetMode, MnistReader
 from src.app.layouts.main_tools import MainToolsLayout
@@ -21,7 +22,7 @@ class MainWindow(QMainWindow):
             "on_select_training_dataset": lambda: self.open_file_dialog(self.start_train),
             "on_select_test_dataset": lambda: self.open_file_dialog(self.start_query),
             "on_record_update": self.update_record_info,
-            "on_progress_update": lambda value: self.update_training_info(value)
+            "on_progress_update": lambda count: self.update_progress_bar(count)
         }
 
         self.setWindowTitle("Simple Neural Network for MNIST")
@@ -30,17 +31,31 @@ class MainWindow(QMainWindow):
         self.reader = MnistReader()
         self.on_update_progress.connect(callbacks["on_progress_update"])
 
-        # === Left layout ===
+        # === Left layout! ===
         self.main_tools_layout = MainToolsLayout(callbacks)
 
         # === Right layout ===
         self.record_info_layout = RecordInfoLayout(callbacks)
 
-        # === Main Window Layout ===
-        self.main_layout = QHBoxLayout()
+        # === Progress bar ===
 
-        self.main_layout.addLayout(self.main_tools_layout)
-        self.main_layout.addLayout(self.record_info_layout)
+        self.progressBar = QProgressBar()
+        self.progressBar.setRange(0, 100)
+        self.progressBar.setFormat("Progress: %p%")
+        set_progress_bar_style(self.progressBar, SIZE_FONT_PROGRESS, int(SIZE_FONT_PROGRESS * 1.75), Qt.AlignmentFlag.AlignCenter)
+
+        # === Full-space layout ===
+
+        self.full_space_layout = QHBoxLayout()
+
+        self.full_space_layout.addLayout(self.main_tools_layout)
+        self.full_space_layout.addLayout(self.record_info_layout)
+
+        # === Main window container ===
+
+        self.main_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.full_space_layout)
+        self.main_layout.addWidget(self.progressBar)
 
         container = QWidget()
         container.setLayout(self.main_layout)
@@ -58,10 +73,8 @@ class MainWindow(QMainWindow):
 
     # --- Main GUI methods
 
-    def update_training_info(self, count: int):
-        self.main_tools_layout.update_training_info(
-            count / self.reader.get_dataset_size()
-        )
+    def update_progress_bar(self, count: int):
+        self.progressBar.setValue(int(count / self.reader.get_dataset_size() * 100))
         pass
 
     def update_test_info(self):
@@ -163,7 +176,7 @@ class MainWindow(QMainWindow):
         if not self.load_dataset(path, records, 1, NetMode.QUERY):
             return
 
-        self.reader.query()
+        self.reader.query(on_progress_callback)
         pass
 
     def start_query(self, path: str):
@@ -180,8 +193,8 @@ class MainWindow(QMainWindow):
         pass
 
     def on_finish_query(self):
-        self.show_info_message(MSG_QUERY_COMPLETED.format(self.reader.get_dataset_size(NetMode.QUERY), self.reader.get_accuracy()))
-        self.main_tools_layout.show_gui_for_statistics(self.reader.get_dataset_size(NetMode.QUERY))
+        self.show_info_message(MSG_QUERY_COMPLETED.format(self.reader.get_dataset_size(), self.reader.get_accuracy()))
+        self.main_tools_layout.show_gui_for_statistics(self.reader.get_dataset_size())
         self.update_test_info()
         self.main_tools_layout.set_buttons_enabled(True)
         pass

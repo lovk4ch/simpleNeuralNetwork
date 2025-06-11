@@ -29,13 +29,14 @@ class MnistReader:
         self.train_data = []
         self.query_data = []
         self.scorecard = []
+        self.net_mode = NetMode.TRAIN
         self.n = NeuralNetwork(input_nodes, hidden_nodes, output_nodes, learning_rate)
 
         plt.grid(True, linestyle=':', alpha=0.5)
         pass
 
-    def get_dataset_size(self, net_mode: NetMode = NetMode.TRAIN):
-        match net_mode.value:
+    def get_dataset_size(self):
+        match self.net_mode.value:
             case NetMode.TRAIN.value:
                 return len(self.train_data)
             case NetMode.QUERY.value:
@@ -132,8 +133,9 @@ class MnistReader:
                     step_time = time.perf_counter()
             pass
 
-        self.total_trained += len(self.train_data) * epochs
         callback(count) if callback else None
+
+        self.total_trained += len(self.train_data) * epochs
         print(f"Time for train: {time.perf_counter() - init_time:.2f} sec")
         print(f"Total training data: {self.get_total_trained()}, last dataset: {self.get_dataset_size()}.\n")
 
@@ -142,6 +144,8 @@ class MnistReader:
     def query(self, callback = None):
         print("Query started")
         init_time = time.perf_counter()
+        step_time = init_time
+        count = 0
 
         self.scorecard.clear()
         for record in self.query_data:
@@ -161,7 +165,14 @@ class MnistReader:
             label = np.argmax(outputs)
 
             self.scorecard.append([label, correct_label])
+
+            count += 1
+            if (time.perf_counter() - step_time) > 0.03:
+                callback(count) if callback else None
+                step_time = time.perf_counter()
             pass
+
+        callback(count) if callback else None
 
         print(f"Time for query: {time.perf_counter() - init_time:.2f} sec")
         scorecard_array = np.asarray(self.scorecard)
@@ -180,7 +191,8 @@ class MnistReader:
             print(MSG_DATASET_IS_NOT_LOADED)
             return False
 
-        match net_mode.value:
+        self.net_mode = net_mode
+        match self.net_mode.value:
             case NetMode.TRAIN.value:
                 self.train_data = data
             case NetMode.QUERY.value:
